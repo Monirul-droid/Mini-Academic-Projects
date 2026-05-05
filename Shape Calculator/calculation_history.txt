@@ -1,0 +1,5 @@
+Cylinder: R=6.00, H=7.00, Surface Area=490.09
+Sphere: Radius=5.00, Volume=523.60
+Rectangular Prism: L=5.00, W=6.00, H=7.00, Surface Area=214.00
+Rectangular Prism: L=3.00, W=4.00, H=6.00, Volume=72.00
+Circle: Radius=2.00, Circumference=12.57
