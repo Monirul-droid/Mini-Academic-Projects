@@ -1,0 +1,44 @@
+LCD I2C
+vcc - 5v
+gnd - gnd
+sda - a4
+scl - a5
+
+ULTRASONIC SENSOR 1 ENTRY
+vcc - 5v
+gnd - gnd
+trig - pin 2
+echo - pin 3
+
+ULTRASONIC SENSOR 2 EXIT
+vcc - 5v
+gnd - gnd
+trig - pin 4
+echo - pin 5
+
+YELLOW LED
+anode - pin 6 through 220 ohm resistor
+cathode - gnd
+
+RED LED
+anode - pin 7 through 220 ohm resistor
+cathode - gnd
+
+GREEN LED
+anode - pin 8 through 220 ohm resistor
+cathode - gnd
+
+IR SENSOR SLOT 1
+vcc - 5v
+gnd - gnd
+out - pin 9
+
+IR SENSOR SLOT 2
+vcc - 5v
+gnd - gnd
+out - pin 10
+
+SERVO MOTOR
+vcc red - 5v or external 5v
+gnd brown black - gnd
+signal orange yellow - pin 11
