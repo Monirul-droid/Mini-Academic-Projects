@@ -1,0 +1,93 @@
+-- -----------------------------------------------------
+-- 1. DATABASE CREATION
+-- -----------------------------------------------------
+CREATE DATABASE IF NOT EXISTS retail_management_db;
+USE retail_management_db;
+
+-- -----------------------------------------------------
+-- 2. TABLE CREATION: USERS
+-- -----------------------------------------------------
+-- Stores user accounts and roles.
+CREATE TABLE IF NOT EXISTS users (
+    user_id VARCHAR(50) NOT NULL PRIMARY KEY,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL,
+    -- New Constraint: Enforce a minimum password length of 8 characters
+    CHECK (CHAR_LENGTH(password) >= 8)
+);
+
+-- -----------------------------------------------------
+-- 3. TABLE CREATION: PRODUCTS
+-- -----------------------------------------------------
+-- Stores inventory items.
+CREATE TABLE IF NOT EXISTS products (
+    product_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    price DECIMAL(10, 2) NOT NULL,
+    stock INT NOT NULL DEFAULT 0,
+    CHECK (price >= 0),
+    CHECK (stock >= 0)
+);
+
+-- -----------------------------------------------------
+-- 4. TABLE CREATION: SALES
+-- -----------------------------------------------------
+-- Stores finalized sale transactions.
+CREATE TABLE IF NOT EXISTS sales (
+    sale_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    sale_date DATE NOT NULL,
+    cashier_id VARCHAR(50) NOT NULL,
+    total DECIMAL(10, 2) NOT NULL,
+    items_count INT NOT NULL,
+    -- Foreign Key: cashier_id links to users.user_id
+    -- NOTE: ON DELETE is handled by the Python API via transaction,
+    -- but the key still needs to exist for integrity.
+    CONSTRAINT fk_cashier
+        FOREIGN KEY (cashier_id)
+        REFERENCES users (user_id)
+);
+
+-- -----------------------------------------------------
+-- 5. TABLE CREATION: SHIPMENTS
+-- -----------------------------------------------------
+-- Stores shipping and logistics records.
+CREATE TABLE IF NOT EXISTS shipments (
+    shipment_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    customer_name VARCHAR(100) NOT NULL,
+    shipping_address TEXT NOT NULL,
+    tracking_number VARCHAR(50) NULL,
+    status ENUM('Pending', 'Done') NOT NULL DEFAULT 'Pending'
+);
+
+-- -----------------------------------------------------
+-- 6. INITIAL DATA POPULATION
+-- -----------------------------------------------------
+
+-- Insert Users (Passwords updated to be >= 8 characters)
+INSERT INTO users (user_id, password, role) VALUES
+('OWNER01', 'admin123', 'Owner'),
+('INV001', 'stocking', 'Inventory Manager'),
+('CASH01', 'tillworker', 'Cashier'),
+('CASH02', 'register2', 'Cashier'), -- Added to prevent FK error during initial sales insert
+('SHIP01', 'logistics', 'Shipment Manager'),
+('STAFF01', 'guestuser', 'Staff');
+
+-- Insert Products
+INSERT INTO products (name, price, stock) VALUES
+('Laptop Pro', 1200.00, 15),
+('Wireless Mouse', 25.50, 50),
+('4K Monitor', 350.00, 5),
+('USB-C Cable', 5.99, 200),
+('Mechanical Keyboard', 99.99, 10);
+
+-- Insert Sales Records (Using updated cashier IDs)
+INSERT INTO sales (sale_date, cashier_id, total, items_count) VALUES
+('2024-10-25', 'CASH01', 1225.50, 2),
+('2024-10-25', 'CASH02', 5.99, 1),
+('2024-10-24', 'CASH01', 350.00, 1);
+
+-- Insert Shipment Records
+INSERT INTO shipments (customer_name, shipping_address, status, tracking_number) VALUES
+('Alice Johnson', '123 Main St, New York, NY', 'Done', 'TRK1234567'),
+('Bob Smith', '456 Oak Ave, Los Angeles, CA', 'Pending', NULL),
+('Charlie Brown', '789 Pine Ln, Chicago, IL', 'Pending', NULL);
