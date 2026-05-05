@@ -1,0 +1,163 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <Servo.h>
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// Pin Definitions
+#define TRIG1 2
+#define ECHO1 3
+#define TRIG2 4
+#define ECHO2 5
+#define SERVO_PIN 11
+#define YELLOW_LED 6
+#define RED_LED 7
+#define GREEN_LED 8
+#define IR_SLOT1 9
+#define IR_SLOT2 10
+
+Servo gateServo;
+
+int currentPos = 90; 
+int mode = 0;      // 0 = Idle, 1 = Entering, 2 = Exiting
+const int detectionRange = 8; 
+
+unsigned long openTime = 0;
+unsigned long messageTime = 0;
+bool messagePending = false;
+
+// --- Helper Functions ---
+
+void moveServo(int targetAngle, int speedDelay) {
+  if (currentPos < targetAngle) {
+    for (int i = currentPos; i <= targetAngle; i++) {
+      gateServo.write(i);
+      delay(speedDelay);
+    }
+  } else {
+    for (int i = currentPos; i >= targetAngle; i--) {
+      gateServo.write(i);
+      delay(speedDelay);
+    }
+  }
+  currentPos = targetAngle;
+}
+
+int getDistance(int trig, int echo) {
+  digitalWrite(trig, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trig, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trig, LOW);
+  long d = pulseIn(echo, HIGH, 25000); 
+  int distance = d * 0.034 / 2;
+  if (distance <= 0) return 999; 
+  return distance;
+}
+
+void updateDisplay(String msg) {
+  lcd.setCursor(0, 0);
+  lcd.print("                "); 
+  lcd.setCursor(0, 0);
+  lcd.print(msg);
+  messageTime = millis();
+  messagePending = true;
+}
+
+// --- Setup ---
+
+void setup() {
+  pinMode(TRIG1, OUTPUT); pinMode(ECHO1, INPUT);
+  pinMode(TRIG2, OUTPUT); pinMode(ECHO2, INPUT);
+  pinMode(YELLOW_LED, OUTPUT); pinMode(RED_LED, OUTPUT); pinMode(GREEN_LED, OUTPUT);
+  
+  pinMode(IR_SLOT1, INPUT_PULLUP); 
+  pinMode(IR_SLOT2, INPUT_PULLUP); 
+
+  digitalWrite(YELLOW_LED, HIGH);
+  digitalWrite(RED_LED, LOW);
+  digitalWrite(GREEN_LED, LOW);
+
+  gateServo.attach(SERVO_PIN);
+  gateServo.write(90); 
+  currentPos = 90;
+
+  lcd.init();
+  lcd.backlight();
+  updateDisplay(" Parking System");
+}
+
+// --- Main Loop ---
+
+void loop() {
+  bool s1 = (digitalRead(IR_SLOT1) == LOW);
+  bool s2 = (digitalRead(IR_SLOT2) == LOW);
+  bool isFull = (s1 && s2);
+  
+  int d1 = getDistance(TRIG1, ECHO1);
+  int d2 = getDistance(TRIG2, ECHO2);
+
+  if (messagePending && (millis() - messageTime > 2000)) {
+    lcd.setCursor(0, 0);
+    lcd.print("    Parking     "); 
+    messagePending = false;
+  }
+
+  // --- GATE LOGIC ---
+  if (mode == 0) { 
+    if (d1 < detectionRange) { 
+      if (isFull) { 
+        updateDisplay("  PARKING FULL  "); 
+        digitalWrite(YELLOW_LED, LOW);
+        digitalWrite(RED_LED, HIGH);
+        delay(1500); 
+        digitalWrite(RED_LED, LOW);
+        digitalWrite(YELLOW_LED, HIGH);
+      } else {
+        updateDisplay(" Entry Detected ");
+        digitalWrite(YELLOW_LED, LOW);
+        digitalWrite(GREEN_LED, HIGH);
+        moveServo(0, 20); 
+        mode = 1; 
+        openTime = millis();
+      }
+    }
+    else if (d2 < detectionRange) { 
+      updateDisplay(" Exit Detected  ");
+      digitalWrite(YELLOW_LED, LOW);
+      digitalWrite(GREEN_LED, HIGH);
+      moveServo(0, 20); 
+      mode = 2; 
+      openTime = millis();
+    }
+  }
+  else { 
+    bool carPassed = (mode == 1) ? (d2 < detectionRange) : (d1 < detectionRange);
+    
+    // Check if car triggered the exit sensor OR if 5 seconds passed
+    if (carPassed || (millis() - openTime > 5000)) {
+      
+      // Removed the delay(500) here so it starts immediately
+      
+      updateDisplay("  Closing Gate  ");
+      digitalWrite(GREEN_LED, LOW);
+      digitalWrite(RED_LED, HIGH); 
+      
+      // Starts closing slowly (30ms per degree) immediately
+      moveServo(90, 30); 
+      
+      digitalWrite(RED_LED, LOW);
+      digitalWrite(YELLOW_LED, HIGH); 
+      mode = 0;
+    }
+  }
+
+  // --- BOTTOM LINE ---
+  lcd.setCursor(0, 1);
+  lcd.print("S1:");
+  lcd.print(s1 ? "FULL " : "EMPT ");
+  lcd.print("S2:");
+  lcd.print(s2 ? "FULL " : "EMPT ");
+
+  delay(50);
+}
